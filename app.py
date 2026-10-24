@@ -61,6 +61,41 @@ html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
 .stApp [data-testid="stForm"] {background:#fffafb!important;}
 .stApp [data-testid="stAlert"] p {color:inherit!important;}
 
+/* Streamlit button labels: keep contrast even when the global text rules are applied */
+.stApp div.stButton > button,
+.stApp div.stButton > button p,
+.stApp div.stButton > button span,
+.stApp [data-testid="stFormSubmitButton"] button,
+.stApp [data-testid="stFormSubmitButton"] button p,
+.stApp [data-testid="stFormSubmitButton"] button span {
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  opacity:1 !important;
+}
+.stApp div.stButton > button,
+.stApp [data-testid="stFormSubmitButton"] button {
+  background:#292522 !important;
+  border:1px solid #292522 !important;
+}
+.stApp div.stButton > button:hover,
+.stApp [data-testid="stFormSubmitButton"] button:hover {
+  background:#b76e86 !important;
+  border-color:#b76e86 !important;
+}
+.stApp div.stButton > button:disabled,
+.stApp [data-testid="stFormSubmitButton"] button:disabled {
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  opacity:.65 !important;
+}
+.stApp [data-testid="stWidgetLabel"] p,
+.stApp [data-testid="stWidgetLabel"] label,
+.stApp label {
+  color:#292522 !important;
+  -webkit-text-fill-color:#292522 !important;
+}
+
+
 .stApp {background:#fff;color:var(--ink);}
 .block-container {max-width:1380px;padding-top:1rem;padding-bottom:3rem;}
 #MainMenu, footer, header {visibility:hidden;}
