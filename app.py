@@ -1,4 +1,4 @@
-import os, json, html, urllib.parse
+import os, json, html, urllib.parse, hashlib, hmac
 from pathlib import Path
 import streamlit as st
 from streamlit_option_menu import option_menu
@@ -10,6 +10,8 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 BRAND = os.getenv("STORE_BRAND", "ZAVIYAR COLLECTIONS")
 DEFAULT_DATA = {
     "whatsapp": "",
+    "admin_username": "",
+    "admin_password_hash": "",
     "announcement": "NEW SEASON ❀ NEW STORIES ❀ DISCOVER YOUR STYLE",
     "products": [
         {"id": 1, "name": "Ivory Bloom 3 Piece", "category": "3 Piece", "price": 5490, "old_price": 6490, "stock": 3, "sold": False, "description": "An elegant three-piece look with delicate details.", "images": [], "sizes": ["Unstitched"]},
@@ -22,7 +24,7 @@ def load_data():
     if DATA_FILE.exists():
         try:
             d=json.loads(DATA_FILE.read_text(encoding="utf-8"))
-            d.setdefault("whatsapp",""); d.setdefault("announcement",DEFAULT_DATA["announcement"])
+            d.setdefault("whatsapp",""); d.setdefault("admin_username",""); d.setdefault("admin_password_hash",""); d.setdefault("announcement",DEFAULT_DATA["announcement"])
             d.setdefault("products",[]); d.setdefault("next_id",max([p.get("id",0) for p in d["products"]]+[0])+1)
             return d
         except Exception: pass
@@ -44,6 +46,21 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 :root { --ink:#20201e; --muted:#77756f; --line:#ece9e3; --cream:#f8f7f3; --accent:#c9869b; --pink:#f7e8ed; --rose:#b76e86; }
 html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
+/* Explicit high-contrast form styling: labels must never be white on white */
+.stApp, .stApp p, .stApp label, .stApp [data-testid="stMarkdownContainer"] p,
+.stApp [data-testid="stWidgetLabel"] p, .stApp [data-testid="stWidgetLabel"] label {
+  color:#292522 !important;
+}
+.stApp input, .stApp textarea, .stApp [data-baseweb="select"] > div {
+  background:#ffffff !important; color:#24211f !important;
+  -webkit-text-fill-color:#24211f !important; border:1px solid #d9cbd0 !important;
+}
+.stApp input::placeholder, .stApp textarea::placeholder {
+  color:#77716f !important; -webkit-text-fill-color:#77716f !important; opacity:1 !important;
+}
+.stApp [data-testid="stForm"] {background:#fffafb!important;}
+.stApp [data-testid="stAlert"] p {color:inherit!important;}
+
 .stApp {background:#fff;color:var(--ink);}
 .block-container {max-width:1380px;padding-top:1rem;padding-bottom:3rem;}
 #MainMenu, footer, header {visibility:hidden;}
@@ -92,24 +109,47 @@ st.divider()
 page=st.session_state.page
 if page=="Admin":
     st.markdown('<div class="section-title">Admin Studio</div><div class="section-sub">Private store management</div>',unsafe_allow_html=True)
+    # First-run credential setup lives in the app. Password is stored as a hash, not plain text.
+    if not data.get("admin_password_hash"):
+        st.info("First-time setup: create your private admin username and password.")
+        with st.form("first_admin_setup"):
+            new_user=st.text_input("Create admin username",placeholder="Choose a username")
+            new_pass=st.text_input("Create admin password",type="password",placeholder="Use at least 10 characters")
+            confirm_pass=st.text_input("Confirm admin password",type="password")
+            setup=st.form_submit_button("Create admin login",use_container_width=True)
+        if setup:
+            if len(new_user.strip())<4: st.error("Username must be at least 4 characters.")
+            elif len(new_pass)<10: st.error("Password must be at least 10 characters.")
+            elif new_pass!=confirm_pass: st.error("Passwords do not match.")
+            else:
+                data["admin_username"]=new_user.strip()
+                data["admin_password_hash"]=hashlib.sha256(new_pass.encode("utf-8")).hexdigest()
+                save_data(data)
+                st.session_state.admin=True
+                st.success("Admin login created. You are signed in.")
+                st.rerun()
+        st.caption("Note: this starter stores settings in the app's local data file. For a public live shop, connect persistent database storage before relying on it.")
+        st.stop()
+
     if not st.session_state.admin:
         with st.form("admin_login"):
             st.write("Sign in to manage products, stock and order contact settings.")
-            username=st.text_input("Admin username")
-            password=st.text_input("Admin password", type="password")
+            username=st.text_input("Admin username",placeholder="Enter admin username")
+            password=st.text_input("Admin password", type="password",placeholder="Enter admin password")
             submitted=st.form_submit_button("Sign in securely", use_container_width=True)
         if submitted:
-            expected_user=st.secrets.get("ADMIN_USERNAME",os.getenv("ADMIN_USERNAME","admin"))
-            expected_pass=st.secrets.get("ADMIN_PASSWORD",os.getenv("ADMIN_PASSWORD",""))
-            if expected_pass and username==expected_user and password==expected_pass:
+            expected_user=data.get("admin_username","")
+            expected_hash=data.get("admin_password_hash","")
+            given_hash=hashlib.sha256(password.encode("utf-8")).hexdigest()
+            if expected_user and expected_hash and username.strip()==expected_user and hmac.compare_digest(given_hash,expected_hash):
                 st.session_state.admin=True; st.success("Signed in."); st.rerun()
             else:
-                st.error("Login details are incorrect, or admin password has not been configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in Streamlit Secrets.")
+                st.error("Username or password is incorrect. Check capitalization and try again.")
         st.stop()
     st.success("Admin session active")
     if st.button("Log out"):
         st.session_state.admin=False; st.rerun()
-    tab1,tab2,tab3=st.tabs(["Products & stock","Add product","Store settings"])
+    tab1,tab2,tab3,tab4=st.tabs(["Products & stock","Add product","Store settings","Admin login"])
     with tab1:
         products=data["products"]
         if not products: st.info("No products yet. Add your first product.")
@@ -163,7 +203,29 @@ if page=="Admin":
             data["whatsapp"]="".join(ch for ch in wa if ch.isdigit())
             data["announcement"]=announcement.strip()
             save_data(data); st.success("Settings saved.")
-        st.caption("Keep the WhatsApp number in international format without +, spaces or dashes. Admin login credentials must be set in Streamlit Secrets.")
+        st.caption("Keep the WhatsApp number in international format without +, spaces or dashes.")
+    with tab4:
+        st.write("Change your admin login here.")
+        with st.form("change_admin_login"):
+            new_user=st.text_input("New admin username",value=data.get("admin_username",""))
+            current_pass=st.text_input("Current password",type="password")
+            new_pass=st.text_input("New password",type="password")
+            confirm_pass=st.text_input("Confirm new password",type="password")
+            change=st.form_submit_button("Update admin login",use_container_width=True)
+        if change:
+            current_hash=hashlib.sha256(current_pass.encode("utf-8")).hexdigest()
+            if not hmac.compare_digest(current_hash,data.get("admin_password_hash","")):
+                st.error("Current password is incorrect.")
+            elif len(new_user.strip())<4:
+                st.error("Username must be at least 4 characters.")
+            elif len(new_pass)<10:
+                st.error("New password must be at least 10 characters.")
+            elif new_pass!=confirm_pass:
+                st.error("New passwords do not match.")
+            else:
+                data["admin_username"]=new_user.strip()
+                data["admin_password_hash"]=hashlib.sha256(new_pass.encode("utf-8")).hexdigest()
+                save_data(data); st.success("Admin login updated.")
     st.stop()
 
 # storefront
