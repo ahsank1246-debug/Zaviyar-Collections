@@ -1,0 +1,52 @@
+{
+  "whatsapp": "",
+  "announcement": "NEW SEASON • NEW STORIES • DISCOVER YOUR STYLE",
+  "products": [
+    {
+      "id": 1,
+      "name": "Ivory Bloom 3 Piece",
+      "category": "3 Piece",
+      "price": 5490,
+      "old_price": 6490,
+      "stock": 3,
+      "sold": false,
+      "description": "An elegant three-piece look with delicate details.",
+      "images": [],
+      "sizes": [
+        "Unstitched"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Sage Grace 2 Piece",
+      "category": "2 Piece",
+      "price": 3890,
+      "old_price": 0,
+      "stock": 8,
+      "sold": false,
+      "description": "A fresh everyday look, made for effortless styling.",
+      "images": [],
+      "sizes": [
+        "Unstitched"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Ready-to-Wear Edit",
+      "category": "Ready-Made",
+      "price": 0,
+      "old_price": 0,
+      "stock": 0,
+      "sold": false,
+      "description": "Your ready-made collection will appear here soon.",
+      "images": [],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
+    }
+  ],
+  "next_id": 4
+}
